@@ -15,7 +15,9 @@ from neural_operations import OPS, EncCombinerCell, DecCombinerCell, Conv2D, get
 from neural_ar_operations import ARConv2d, ARInvertedResidual, MixLogCDFParam, mix_log_cdf_flow
 from neural_ar_operations import ELUConv as ARELUConv
 from torch.distributions.bernoulli import Bernoulli
+from torch.cuda.amp import autocast
 
+import utils
 from utils import get_stride_for_cell_type, get_input_size, groups_per_scale
 from distributions import Normal, DiscMixLogistic, NormalDecoder
 from thirdparty.inplaced_sync_batchnorm import SyncBatchNormSwish
@@ -336,7 +338,7 @@ class AutoEncoder(nn.Module):
         return nn.Sequential(nn.ELU(),
                              Conv2D(C_in, C_out, 3, padding=1, bias=True))
 
-    def forward(self, x):
+    def forward(self, x, global_step=None, args=None):
         s = self.stem(2 * x - 1.0)
 
         # perform pre-processing
@@ -444,7 +446,36 @@ class AutoEncoder(nn.Module):
             log_q += torch.sum(log_q_conv, dim=[1, 2, 3])
             log_p += torch.sum(log_p_conv, dim=[1, 2, 3])
 
-        return logits, log_q, log_p, kl_all, kl_diag
+        if global_step is None or args is None:
+            return logits, log_q, log_p, kl_all, kl_diag
+
+        alpha_i = utils.kl_balancer_coeff(num_scales=self.num_latent_scales,
+                                    groups_per_scale=self.groups_per_scale, fun='square')
+
+        with autocast():
+            output = self.decoder_output(logits)
+            kl_coeff = utils.kl_coeff(global_step, args.kl_anneal_portion * args.num_total_iter,
+                                    args.kl_const_portion * args.num_total_iter, args.kl_const_coeff)
+
+            recon_loss = utils.reconstruction_loss(output, x, crop=self.crop_output)
+            balanced_kl, kl_coeffs, kl_vals = utils.kl_balancer(kl_all, kl_coeff, kl_balance=True, alpha_i=alpha_i)
+
+            nelbo_batch = recon_loss + balanced_kl
+            loss = torch.mean(nelbo_batch)
+            norm_loss = self.spectral_norm_parallel()
+            bn_loss = self.batchnorm_loss()
+            # get spectral regularization coefficient (lambda)
+            if args.weight_decay_norm_anneal:
+                assert args.weight_decay_norm_init > 0 and args.weight_decay_norm > 0, 'init and final wdn should be positive.'
+                wdn_coeff = (1. - kl_coeff) * np.log(args.weight_decay_norm_init) + kl_coeff * np.log(args.weight_decay_norm)
+                wdn_coeff = np.exp(wdn_coeff)
+            else:
+                wdn_coeff = args.weight_decay_norm
+
+            loss += norm_loss * wdn_coeff + bn_loss * wdn_coeff
+
+        return logits, log_q, log_p, kl_all, kl_diag, output, norm_loss, bn_loss, wdn_coeff, kl_coeff, kl_coeffs, kl_vals, loss
+
 
     def sample(self, num_samples, t):
         scale_ind = 0
