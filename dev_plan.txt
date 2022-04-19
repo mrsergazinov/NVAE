@@ -1,0 +1,6 @@
+1. Implement TreeNVAE class (Renat)
+    a. forward(): compute the loss => need to implement splitting block
+    Files: model_tree.py
+2. Change NVAE to compute the loss on .forward() (Xingchi)
+    Files: model_node.py
+
