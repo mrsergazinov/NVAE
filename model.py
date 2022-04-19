@@ -17,6 +17,7 @@ from neural_ar_operations import ELUConv as ARELUConv
 from torch.distributions.bernoulli import Bernoulli
 from torch.cuda.amp import autocast
 
+import utils
 from utils import get_stride_for_cell_type, get_input_size, groups_per_scale
 from distributions import Normal, DiscMixLogistic, NormalDecoder
 from thirdparty.inplaced_sync_batchnorm import SyncBatchNormSwish

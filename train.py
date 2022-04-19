@@ -164,29 +164,6 @@ def train(train_queue, model, cnn_optimizer, grad_scalar, global_step, warmup_it
 
         cnn_optimizer.zero_grad()
         logits, log_q, log_p, kl_all, kl_diag, output, norm_loss, bn_loss, wdn_coeff, kl_coeff, kl_coeffs, kl_vals, loss = model(x, global_step, args)
-        # with autocast():
-        #     logits, log_q, log_p, kl_all, kl_diag = model(x)
-
-        #     output = model.decoder_output(logits)
-        #     kl_coeff = utils.kl_coeff(global_step, args.kl_anneal_portion * args.num_total_iter,
-        #                               args.kl_const_portion * args.num_total_iter, args.kl_const_coeff)
-
-        #     recon_loss = utils.reconstruction_loss(output, x, crop=model.crop_output)
-        #     balanced_kl, kl_coeffs, kl_vals = utils.kl_balancer(kl_all, kl_coeff, kl_balance=True, alpha_i=alpha_i)
-
-        #     nelbo_batch = recon_loss + balanced_kl
-        #     loss = torch.mean(nelbo_batch)
-        #     norm_loss = model.spectral_norm_parallel()
-        #     bn_loss = model.batchnorm_loss()
-        #     # get spectral regularization coefficient (lambda)
-        #     if args.weight_decay_norm_anneal:
-        #         assert args.weight_decay_norm_init > 0 and args.weight_decay_norm > 0, 'init and final wdn should be positive.'
-        #         wdn_coeff = (1. - kl_coeff) * np.log(args.weight_decay_norm_init) + kl_coeff * np.log(args.weight_decay_norm)
-        #         wdn_coeff = np.exp(wdn_coeff)
-        #     else:
-        #         wdn_coeff = args.weight_decay_norm
-
-        #     loss += norm_loss * wdn_coeff + bn_loss * wdn_coeff
 
         grad_scalar.scale(loss).backward()
         utils.average_gradients(model.parameters(), args.distributed)
