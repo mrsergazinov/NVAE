@@ -1,10 +1,10 @@
 
 
-utils.count_parameters_in_M(model)
-model.groups_per_scale
-model.sample(num_samples, t)
-model.decoder_output(logits)
-model.forward(x, global_step, args)
-model.crop_output
-model.forward(x)
+utils.count_parameters_in_M(model) -> Auto
+model.groups_per_scale -> Done
+model.sample(num_samples, t) -> Done
+model.decoder_output(logits) -> Done
+model.forward(x, global_step, args) -> Done
+model.crop_output -> Done
+model.forward(x) -> Done
 
