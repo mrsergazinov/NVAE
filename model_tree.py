@@ -54,3 +54,8 @@ class TreeNVAE(nn.Module):
             return out_l[-1] + out_r[-1]
         else:
             return self.child_r(x, p_x_previous * p_r, **kwargs) + self.child_l(x, p_x_previous **kwargs)
+
+    def sample(self, num_samples, t):
+        return torch.cat([self.child_l.sample(num_samples, t), self.child_r.sample(num_samples, t)], dim=0)
+    
+    
