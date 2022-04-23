@@ -15,7 +15,8 @@ import torch.distributed as dist
 from torch.multiprocessing import Process
 from torch.cuda.amp import autocast, GradScaler
 
-from model import AutoEncoder
+# from model import AutoEncoder
+from model_tree import TreeNVAE
 from thirdparty.adamax import Adamax
 import utils
 import datasets
@@ -42,7 +43,9 @@ def main(args):
 
     arch_instance = utils.get_arch_cells(args.arch_instance)
 
-    model = AutoEncoder(args, writer, arch_instance)
+    # model = AutoEncoder(args, writer, arch_instance)
+    # TODO: automatically determine input image size (dim) for feat_dim
+    model = TreeNVAE(depth=1, cp_k_max=20, feat_dim=[1, 32, 32], args=args, writer=writer, arch_instance=arch_instance)
     model = model.cuda()
 
     logging.info('args = %s', args)
@@ -163,8 +166,7 @@ def train(train_queue, model, cnn_optimizer, grad_scalar, global_step, warmup_it
             utils.average_params(model.parameters(), args.distributed)
 
         cnn_optimizer.zero_grad()
-        out = model(x, global_step=global_step, args=args)
-        loss = out[-1]
+        loss = model(x, global_step=global_step, args=args)
 
         grad_scalar.scale(loss).backward()
         utils.average_gradients(model.parameters(), args.distributed)
