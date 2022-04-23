@@ -76,7 +76,8 @@ class SyncBatchNorm(Function):
     def backward(self, grad_output):
         grad_output = grad_output.contiguous()
         saved_input, weight, mean, invstd, bias, count_tensor = self.saved_tensors
-
+        count_tensor = count_tensor.int()
+        
         # av: re-compute batch normalized out
         eps = 1e-5
         out = torch.batch_norm_elemt(saved_input, weight, bias, mean, invstd, eps)
@@ -119,7 +120,8 @@ class SyncBatchNorm(Function):
                 invstd,
                 weight,
                 mean_dy,
-                mean_dy_xmu
+                mean_dy_xmu,
+                count_tensor
             )
 
         # synchronizing of grad_weight / grad_bias is not needed as distributed
