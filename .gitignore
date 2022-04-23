@@ -4,3 +4,4 @@ visualizations/
 .run/
 *.pyc
 *.pdf
+data/

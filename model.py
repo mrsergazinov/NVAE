@@ -340,7 +340,7 @@ class AutoEncoder(nn.Module):
         return nn.Sequential(nn.ELU(),
                              Conv2D(C_in, C_out, 3, padding=1, bias=True))
 
-    def forward(self, x, global_step=None, args=None):
+    def forward(self, x, p_x_previous=None, global_step=None, args=None):
         s = self.stem(2 * x - 1.0)
 
         # perform pre-processing
@@ -365,7 +365,7 @@ class AutoEncoder(nn.Module):
         ftr = self.enc0(s)                            # this reduces the channel dimension
         param0 = self.enc_sampler[idx_dec](ftr)
         mu_q, log_sig_q = torch.chunk(param0, 2, dim=1)
-        dist = Normal(mu_q, log_sig_q)   # for the first approx. posterior
+        dist = Normal(mu_q, log_sig_q)                # for the first approx. posterior
         z, _ = dist.sample()
         log_q_conv = dist.log_p(z)
 
@@ -463,6 +463,7 @@ class AutoEncoder(nn.Module):
             balanced_kl, kl_coeffs, kl_vals = utils.kl_balancer(kl_all, kl_coeff, kl_balance=True, alpha_i=alpha_i)
 
             nelbo_batch = recon_loss + balanced_kl
+            nelbo_batch = nelbo_batch * p_x_previous # multiply by probability of the leaf node
             loss = torch.mean(nelbo_batch)
             norm_loss = self.spectral_norm_parallel()
             bn_loss = self.batchnorm_loss()

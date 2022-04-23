@@ -163,7 +163,8 @@ def train(train_queue, model, cnn_optimizer, grad_scalar, global_step, warmup_it
             utils.average_params(model.parameters(), args.distributed)
 
         cnn_optimizer.zero_grad()
-        logits, log_q, log_p, kl_all, kl_diag, output, norm_loss, bn_loss, wdn_coeff, kl_coeff, kl_coeffs, kl_vals, loss = model(x, global_step, args)
+        out = model(x, global_step=global_step, args=args)
+        loss = out[-1]
 
         grad_scalar.scale(loss).backward()
         utils.average_gradients(model.parameters(), args.distributed)
@@ -172,20 +173,20 @@ def train(train_queue, model, cnn_optimizer, grad_scalar, global_step, warmup_it
         nelbo.update(loss.data, 1)
 
         if (global_step + 1) % 100 == 0:
-            if (global_step + 1) % 1000 == 0:  # reduced frequency
-                n = int(np.floor(np.sqrt(x.size(0))))
-                x_img = x[:n*n]
-                output_img = output.mean if isinstance(output, torch.distributions.bernoulli.Bernoulli) else output.sample()
-                output_img = output_img[:n*n]
-                x_tiled = utils.tile_image(x_img, n)
-                output_tiled = utils.tile_image(output_img, n)
-                in_out_tiled = torch.cat((x_tiled, output_tiled), dim=2)
-                writer.add_image('reconstruction', in_out_tiled, global_step)
+            # if (global_step + 1) % 1000 == 0:  # reduced frequency
+            #     n = int(np.floor(np.sqrt(x.size(0))))
+            #     x_img = x[:n*n]
+            #     output_img = output.mean if isinstance(output, torch.distributions.bernoulli.Bernoulli) else output.sample()
+            #     output_img = output_img[:n*n]
+            #     x_tiled = utils.tile_image(x_img, n)
+            #     output_tiled = utils.tile_image(output_img, n)
+            #     in_out_tiled = torch.cat((x_tiled, output_tiled), dim=2)
+            #     writer.add_image('reconstruction', in_out_tiled, global_step)
 
             # norm
-            writer.add_scalar('train/norm_loss', norm_loss, global_step)
-            writer.add_scalar('train/bn_loss', bn_loss, global_step)
-            writer.add_scalar('train/norm_coeff', wdn_coeff, global_step)
+            # writer.add_scalar('train/norm_loss', norm_loss, global_step)
+            # writer.add_scalar('train/bn_loss', bn_loss, global_step)
+            # writer.add_scalar('train/norm_coeff', wdn_coeff, global_step)
 
             utils.average_tensor(nelbo.avg, args.distributed)
             logging.info('train %d %f', global_step, nelbo.avg)
@@ -193,20 +194,20 @@ def train(train_queue, model, cnn_optimizer, grad_scalar, global_step, warmup_it
             writer.add_scalar('train/lr', cnn_optimizer.state_dict()[
                               'param_groups'][0]['lr'], global_step)
             writer.add_scalar('train/nelbo_iter', loss, global_step)
-            writer.add_scalar('train/kl_iter', torch.mean(sum(kl_all)), global_step)
-            writer.add_scalar('train/recon_iter', torch.mean(utils.reconstruction_loss(output, x, crop=model.crop_output)), global_step)
-            writer.add_scalar('kl_coeff/coeff', kl_coeff, global_step)
-            total_active = 0
-            for i, kl_diag_i in enumerate(kl_diag):
-                utils.average_tensor(kl_diag_i, args.distributed)
-                num_active = torch.sum(kl_diag_i > 0.1).detach()
-                total_active += num_active
+            # writer.add_scalar('train/kl_iter', torch.mean(sum(kl_all)), global_step)
+            # writer.add_scalar('train/recon_iter', torch.mean(utils.reconstruction_loss(output, x, crop=model.crop_output)), global_step)
+            # writer.add_scalar('kl_coeff/coeff', kl_coeff, global_step)
+            # total_active = 0
+            # for i, kl_diag_i in enumerate(kl_diag):
+                # utils.average_tensor(kl_diag_i, args.distributed)
+                # num_active = torch.sum(kl_diag_i > 0.1).detach()
+                # total_active += num_active
 
                 # kl_ceoff
-                writer.add_scalar('kl/active_%d' % i, num_active, global_step)
-                writer.add_scalar('kl_coeff/layer_%d' % i, kl_coeffs[i], global_step)
-                writer.add_scalar('kl_vals/layer_%d' % i, kl_vals[i], global_step)
-            writer.add_scalar('kl/total_active', total_active, global_step)
+                # writer.add_scalar('kl/active_%d' % i, num_active, global_step)
+                # writer.add_scalar('kl_coeff/layer_%d' % i, kl_coeffs[i], global_step)
+                # writer.add_scalar('kl_vals/layer_%d' % i, kl_vals[i], global_step)
+            # writer.add_scalar('kl/total_active', total_active, global_step)
 
         global_step += 1
 
