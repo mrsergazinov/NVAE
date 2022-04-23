@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from utils import get_stride_for_cell_type, get_input_size, groups_per_scale
 from model import AutoEncoder
 
 class iSHM_block(nn.Module):
@@ -25,6 +26,14 @@ class TreeNVAE(nn.Module):
         self.depth = depth
         self.cp_k_max = cp_k_max
         self.feat_dim = feat_dim
+
+        args = kwargs['args']
+        self.num_latent_scales = args.num_latent_scales         # number of spatial scales that latent layers will reside
+        self.num_groups_per_scale = args.num_groups_per_scale   # number of groups of latent vars. per scale
+        self.num_latent_per_group = args.num_latent_per_group   # number of latent vars. per group
+        self.groups_per_scale = groups_per_scale(self.num_latent_scales, self.num_groups_per_scale, args.ada_groups,
+                                                 minimum_groups=args.min_groups_per_scale)
+
 
         if self.depth == 1:
             self.child_l = AutoEncoder(**kwargs)
