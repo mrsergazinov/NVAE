@@ -1,7 +1,10 @@
+*.pyc
+*.pdf
+
+data/
+tmp/
+checkpoints/
+.run/
 temp/
 visualizations/
 .idea/
-.run/
-*.pyc
-*.pdf
-data/

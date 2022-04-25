@@ -107,7 +107,8 @@ def main(args):
                 num_samples = 16
                 n = int(np.floor(np.sqrt(num_samples)))
                 for t in [0.7, 0.8, 0.9, 1.0]:
-                    logits = model.sample(num_samples, t)
+                    # TODO: automatically detrmine number of nodes (2 here is for number of leafs)
+                    logits = model.sample(num_samples // 2, t)
                     output = model.decoder_output(logits)
                     output_img = output.mean if isinstance(output, torch.distributions.bernoulli.Bernoulli) else output.sample(t)
                     output_tiled = utils.tile_image(output_img, n)
@@ -423,9 +424,10 @@ if __name__ == '__main__':
     if size > 1:
         args.distributed = True
         processes = []
-        for rank in range(size):
+        offset = args.local_rank
+        for rank in range(offset, offset+size):
             args.local_rank = rank
-            global_rank = rank + args.node_rank * args.num_process_per_node
+            global_rank = (rank - offset) + args.node_rank * args.num_process_per_node
             global_size = args.num_proc_node * args.num_process_per_node
             args.global_rank = global_rank
             print('Node rank %d, local proc %d, global proc %d' % (args.node_rank, rank, global_rank))

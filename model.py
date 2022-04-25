@@ -339,6 +339,9 @@ class AutoEncoder(nn.Module):
                 C_out = 10 * self.num_mix_output
         return nn.Sequential(nn.ELU(),
                              Conv2D(C_in, C_out, 3, padding=1, bias=True))
+    
+    def evaluate(self, x):
+        
 
     def forward(self, x, p_x_previous=None, global_step=None, args=None):
         s = self.stem(2 * x - 1.0)
@@ -477,6 +480,19 @@ class AutoEncoder(nn.Module):
 
             loss += norm_loss * wdn_coeff + bn_loss * wdn_coeff
 
+        print('logits: ', logits.shape)
+        print('output: ', output)
+        print('log_q: ', log_q.shape)
+        print('log_p: ', log_p.shape)
+        print('kl_all: ', len(kl_all))
+        print('kl_all: ', kl_all[0].shape)
+        print('kl_diag: ', len(kl_diag))
+        print('kl_diag: ', kl_diag[0].shape)
+        print('kl_coeffs: ', kl_coeffs.shape)
+        print('kl_vals: ', kl_vals.shape)
+        print('bn_loss: ', bn_loss.shape)
+        print('norm_loss: ', norm_loss.shape)
+        # print('wdn_coeff: ', wdn_coeff)
         return logits, log_q, log_p, kl_all, kl_diag, output, norm_loss, bn_loss, wdn_coeff, kl_coeff, kl_coeffs, kl_vals, loss
 
     def sample(self, num_samples, t):
